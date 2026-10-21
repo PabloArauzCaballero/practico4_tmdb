@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/movie_database.dart';
 import '../models/movie.dart';
 import '../services/tmdb_service.dart';
+import '../widgets/common.dart';
 
 /// Detalle de una película o serie.
 ///
@@ -86,46 +87,128 @@ class _DetailBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final isTv = movie.mediaType == MediaType.tv;
+    final genres = movie.genres
+        .split(',')
+        .map((g) => g.trim())
+        .where((g) => g.isNotEmpty)
+        .toList();
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
       children: [
-        Center(child: _Poster(movie: movie)),
-        const SizedBox(height: 20),
-        Text(
-          movie.title,
-          style: theme.textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.w700,
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            PosterImage(
+              bytes: movie.posterBytes,
+              url: movie.posterUrl,
+              width: 130,
+              height: 195,
+              radius: 14,
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: scheme.secondaryContainer,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      isTv ? 'SERIE' : 'PELÍCULA',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: scheme.onSecondaryContainer,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    movie.title,
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      height: 1.15,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  _Rating(movie: movie),
+                ],
+              ),
+            ),
+          ],
+        ),
+        if (genres.isNotEmpty) ...[
+          const SizedBox(height: 20),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final g in genres)
+                Chip(
+                  label: Text(g),
+                  visualDensity: VisualDensity.compact,
+                  side: BorderSide(color: scheme.outlineVariant),
+                ),
+            ],
           ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 12),
-        Center(child: _Rating(movie: movie)),
+        ],
         const SizedBox(height: 20),
-        _InfoRow(icon: Icons.calendar_today, label: 'Año', value: movie.year),
-        _InfoRow(
-          icon: Icons.schedule,
-          label: isTv ? 'Duración por episodio' : 'Duración',
-          value: movie.runtimeLabel,
+        Row(
+          children: [
+            Expanded(
+              child: _InfoTile(
+                icon: Icons.calendar_today,
+                label: 'Año',
+                value: movie.year,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _InfoTile(
+                icon: Icons.schedule,
+                label: isTv ? 'Por episodio' : 'Duración',
+                value: movie.runtimeLabel,
+              ),
+            ),
+          ],
         ),
-        _InfoRow(icon: Icons.category, label: 'Género', value: movie.genres),
-        _InfoRow(
+        const SizedBox(height: 10),
+        _InfoTile(
           icon: Icons.movie_creation_outlined,
           label: isTv ? 'Director / Creador' : 'Director',
           value: movie.director,
         ),
-        const SizedBox(height: 16),
-        Text('Sinopsis', style: theme.textTheme.titleMedium),
-        const SizedBox(height: 6),
-        Text(movie.overview, style: theme.textTheme.bodyLarge),
-        const SizedBox(height: 20),
+        const SizedBox(height: 24),
+        Text(
+          'Sinopsis',
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          movie.overview.isEmpty ? 'Sin sinopsis disponible.' : movie.overview,
+          style: theme.textTheme.bodyLarge?.copyWith(
+            height: 1.5,
+            color: scheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 24),
         Row(
           children: [
             Icon(
               fromHistory ? Icons.storage : Icons.check_circle_outline,
               size: 16,
-              color: theme.colorScheme.outline,
+              color: scheme.outline,
             ),
             const SizedBox(width: 6),
             Expanded(
@@ -134,7 +217,7 @@ class _DetailBody extends StatelessWidget {
                     ? 'Datos leídos de la base de datos local.'
                     : 'Guardada en el historial de búsqueda.',
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.outline,
+                  color: scheme.outline,
                 ),
               ),
             ),
@@ -145,36 +228,6 @@ class _DetailBody extends StatelessWidget {
   }
 }
 
-class _Poster extends StatelessWidget {
-  const _Poster({required this.movie});
-  final MovieDetail movie;
-
-  @override
-  Widget build(BuildContext context) {
-    final bytes = movie.posterBytes;
-    final placeholder = Container(
-      width: 220,
-      height: 330,
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-      child: const Icon(Icons.image_not_supported_outlined, size: 48),
-    );
-    final Widget image;
-    if (bytes != null) {
-      image = Image.memory(bytes, width: 220, fit: BoxFit.cover);
-    } else if (movie.posterUrl != null) {
-      image = Image.network(
-        movie.posterUrl!,
-        width: 220,
-        fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => placeholder,
-      );
-    } else {
-      image = placeholder;
-    }
-    return ClipRRect(borderRadius: BorderRadius.circular(12), child: image);
-  }
-}
-
 class _Rating extends StatelessWidget {
   const _Rating({required this.movie});
   final MovieDetail movie;
@@ -182,33 +235,37 @@ class _Rating extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.primaryContainer,
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.star_rounded, color: Colors.amber),
-          const SizedBox(width: 6),
-          Text(
-            '${movie.voteAverage.toStringAsFixed(1)} / 10',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w700,
+    final color = RatingBadge.colorFor(movie.voteAverage);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.star_rounded, color: color, size: 26),
+            const SizedBox(width: 4),
+            Text(
+              '${movie.voteAverage.toStringAsFixed(1)} / 10',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
             ),
+          ],
+        ),
+        const SizedBox(height: 2),
+        Text(
+          '${movie.voteCount} votos',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
           ),
-          const SizedBox(width: 8),
-          Text('(${movie.voteCount} votos)', style: theme.textTheme.bodySmall),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
 
-class _InfoRow extends StatelessWidget {
-  const _InfoRow({
+class _InfoTile extends StatelessWidget {
+  const _InfoTile({
     required this.icon,
     required this.label,
     required this.value,
@@ -221,18 +278,36 @@ class _InfoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(14),
+      ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 20, color: theme.colorScheme.primary),
+          Icon(icon, size: 22, color: theme.colorScheme.primary),
           const SizedBox(width: 12),
-          SizedBox(
-            width: 110,
-            child: Text(label, style: theme.textTheme.labelLarge),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
           ),
-          Expanded(child: Text(value, style: theme.textTheme.bodyMedium)),
         ],
       ),
     );

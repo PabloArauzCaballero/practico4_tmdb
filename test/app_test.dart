@@ -138,5 +138,20 @@ void main() {
       await db.delete(1, MediaType.movie);
       expect((await db.history()).length, 1);
     });
+
+    test('borra uno por uno y deshacer lo restaura en su lugar', () async {
+      final db = MovieDatabase.instance;
+      await db.clear();
+      await db.save(movie(1, 'Spider-Man', '2002-05-01'));
+      await Future.delayed(const Duration(milliseconds: 5));
+      await db.save(movie(2, 'The Platform 2', '2024-10-04'));
+
+      final borrada = (await db.history()).last;
+      await db.delete(borrada.id, borrada.mediaType);
+      expect((await db.history()).map((m) => m.id), [2]);
+
+      await db.restore(borrada);
+      expect((await db.history()).map((m) => m.id), [2, 1]);
+    });
   });
 }
