@@ -21,6 +21,7 @@ class MovieSummary {
     required this.title,
     required this.releaseDate,
     this.posterPath,
+    this.voteAverage = 0,
   });
 
   final int id;
@@ -28,6 +29,7 @@ class MovieSummary {
   final String title;
   final String releaseDate;
   final String? posterPath;
+  final double voteAverage;
 
   String get year => releaseDate.length >= 4 ? releaseDate.substring(0, 4) : '';
 
@@ -39,6 +41,7 @@ class MovieSummary {
       releaseDate:
           (json['release_date'] ?? json['first_air_date'] ?? '') as String,
       posterPath: json['poster_path'] as String?,
+      voteAverage: (json['vote_average'] as num?)?.toDouble() ?? 0,
     );
   }
 }

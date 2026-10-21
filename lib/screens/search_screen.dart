@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../config.dart';
 import '../models/movie.dart';
 import '../services/tmdb_service.dart';
+import '../widgets/common.dart';
 import 'detail_screen.dart';
 
 enum SearchMode { title, year }
@@ -162,7 +163,6 @@ class _SearchScreenState extends State<SearchScreen> {
                           labelText: byTitle ? 'Título' : 'Año de estreno',
                           hintText: byTitle ? 'Ej: Spider-Man' : 'Ej: 2002',
                           prefixIcon: const Icon(Icons.search),
-                          border: const OutlineInputBorder(),
                         ),
                         onSubmitted: (_) => _search(),
                       ),
@@ -181,7 +181,6 @@ class _SearchScreenState extends State<SearchScreen> {
                           decoration: const InputDecoration(
                             labelText: 'Año',
                             hintText: 'Opcional',
-                            border: OutlineInputBorder(),
                           ),
                           onSubmitted: (_) => _search(),
                         ),
@@ -189,8 +188,11 @@ class _SearchScreenState extends State<SearchScreen> {
                     ],
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(52),
+                  ),
                   onPressed: _loading ? null : _search,
                   icon: const Icon(Icons.search),
                   label: const Text('Buscar'),
@@ -200,12 +202,29 @@ class _SearchScreenState extends State<SearchScreen> {
           ),
           if (_loading) const LinearProgressIndicator(),
           if (_error != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Text(
-                _error!,
-                style: TextStyle(color: theme.colorScheme.error),
-                textAlign: TextAlign.center,
+            Container(
+              margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.errorContainer,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    color: theme.colorScheme.onErrorContainer,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      _error!,
+                      style: TextStyle(
+                        color: theme.colorScheme.onErrorContainer,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           Expanded(child: _buildResults(theme)),
@@ -217,31 +236,53 @@ class _SearchScreenState extends State<SearchScreen> {
   Widget _buildResults(ThemeData theme) {
     final results = _results;
     if (results == null) {
-      return Center(
-        child: Text(
-          widget.service.hasApiKey
-              ? 'Busca una película o serie.'
-              : 'Falta la clave de TMDB.\nEjecuta con --dart-define=TMDB_API_KEY=…',
-          textAlign: TextAlign.center,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.outline,
-          ),
-        ),
-      );
+      return widget.service.hasApiKey
+          ? const EmptyState(
+              icon: Icons.local_movies_outlined,
+              title: 'Busca una película o serie.',
+              message: 'Por título o por año de estreno.',
+            )
+          : const EmptyState(
+              icon: Icons.key_off_outlined,
+              title: 'Falta la clave de TMDB.',
+              message: 'Ejecuta con --dart-define=TMDB_API_KEY=…',
+            );
     }
     if (results.isEmpty) {
-      return const Center(child: Text('No se encontraron resultados.'));
+      return const EmptyState(
+        icon: Icons.search_off,
+        title: 'No se encontraron resultados.',
+        message: 'Prueba con otro título o año.',
+      );
     }
-    return ListView.separated(
-      itemCount: results.length,
-      separatorBuilder: (_, _) => const Divider(height: 1),
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 16),
+      itemCount: results.length + 1,
       itemBuilder: (context, index) {
-        final item = results[index];
-        return ListTile(
-          leading: _Thumb(path: item.posterPath),
-          title: Text(item.title),
-          subtitle: Text(item.year.isEmpty ? 'Año desconocido' : item.year),
-          trailing: const Icon(Icons.chevron_right),
+        if (index == 0) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
+            child: Text(
+              '${results.length} resultados',
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          );
+        }
+        final item = results[index - 1];
+        return MediaCard(
+          leading: PosterImage(
+            url: item.posterPath == null
+                ? null
+                : '${tmdbImageBaseUrl.replaceFirst('w500', 'w185')}${item.posterPath}',
+            width: 56,
+            height: 84,
+            radius: 8,
+          ),
+          title: item.title,
+          year: item.year.isEmpty ? 'Año desconocido' : item.year,
+          rating: item.voteAverage,
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute(
               builder: (_) => DetailScreen.fromSearch(
@@ -252,32 +293,6 @@ class _SearchScreenState extends State<SearchScreen> {
           ),
         );
       },
-    );
-  }
-}
-
-class _Thumb extends StatelessWidget {
-  const _Thumb({this.path});
-  final String? path;
-
-  @override
-  Widget build(BuildContext context) {
-    final fallback = Container(
-      width: 40,
-      height: 60,
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-      child: const Icon(Icons.movie_outlined, size: 20),
-    );
-    if (path == null) return fallback;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(4),
-      child: Image.network(
-        '${tmdbImageBaseUrl.replaceFirst('w500', 'w92')}$path',
-        width: 40,
-        height: 60,
-        fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => fallback,
-      ),
     );
   }
 }

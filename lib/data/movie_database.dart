@@ -81,6 +81,16 @@ class MovieDatabase {
     );
   }
 
+  /// Vuelve a insertar una película borrada, conservando su fecha original.
+  Future<void> restore(MovieDetail movie) async {
+    final db = await database;
+    await db.insert(
+      _table,
+      movie.toMap(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
   Future<void> clear() async {
     final db = await database;
     await db.delete(_table);
